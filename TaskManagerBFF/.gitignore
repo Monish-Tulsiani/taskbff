@@ -1,0 +1,18 @@
+# Exclude all hidden files except .gitignore, .scalafmt.conf, and .sbtopts-jenkins
+.*
+!/.gitignore
+!/.scalafmt.conf
+!/.sbtopts-jenkins
+
+# Exclude all the IDEA configurations except coding styles
+!/.idea/
+/.idea/*
+!/.idea/copyright/
+
+# Exclude all temporary and compiler-generated files and directories
+target/
+*.log
+*.iml
+*.js.map
+*.css.map
+project/metals.sbt
