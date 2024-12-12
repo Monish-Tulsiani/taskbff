@@ -23,7 +23,6 @@ object AuthMiddleware {
             case Right(userId) =>
               httpRoutes.run(req) // Forward the request as the token is valid
             case Left(error) =>
-              // Log the invalid token error and return Forbidden wrapped in OptionT
               OptionT.liftF(Logger[F].warn(s"Invalid token: $error") *> Forbidden("Invalid token"))
           }
         case None =>

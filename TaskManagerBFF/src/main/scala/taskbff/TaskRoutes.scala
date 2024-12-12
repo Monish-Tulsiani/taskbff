@@ -9,8 +9,6 @@ import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.dsl.Http4sDsl
 import org.typelevel.log4cats.Logger
 
-import java.util.UUID
-
 object TaskRoutes {
 
   implicit def taskEntityDecoder[F[_]: Async]: EntityDecoder[F, Task] = jsonOf[F, Task]
@@ -29,7 +27,7 @@ object TaskRoutes {
         for {
           taskInput <- req.as[TaskData]
           _ <- Logger[F].info(s"Received request to create task: $taskInput")
-          taskWithId = Task(id = UUID.randomUUID().toString, taskInput.task, taskInput.status, taskInput.tags, taskInput.userId)
+          taskWithId = Task(0, taskInput.task, taskInput.statusId, taskInput.tags, taskInput.userId)
           _ <- Logger[F].info(s"Received request to create task: $taskWithId")
           result <- LiftIO[F].liftIO(taskRepo.createTask(taskWithId)).attempt
           response <- result match {
@@ -49,25 +47,25 @@ object TaskRoutes {
               InternalServerError("Something went wrong")
           }
 
-      case GET -> Root / "tasks" / id =>
+      case GET -> Root / "tasks" / IntVar(id) =>
         Logger[F].info(s"Received request to get task with id $id") >>
           LiftIO[F].liftIO(taskRepo.getTaskById(id)).flatMap {
             case Some(task) => Ok(task)
             case None => NotFound(s"No task found with id $id")
           }
 
-      case req @ PUT -> Root / "tasks" / id =>
+      case req @ PUT -> Root / "tasks" / IntVar(id) =>
         req.as[TaskData].flatMap { updatedTaskInput =>
           Logger[F].info(s"Received request to update task with id $id with data: $updatedTaskInput") >>
             LiftIO[F].liftIO {
-              taskRepo.updateTask(id, Task(id, updatedTaskInput.task, updatedTaskInput.status, updatedTaskInput.tags, updatedTaskInput.userId))
+              taskRepo.updateTask(id, Task(id, updatedTaskInput.task, updatedTaskInput.statusId, updatedTaskInput.tags, updatedTaskInput.userId))
             }.flatMap {
               case 1 => Ok(updatedTaskInput)
               case _ => NotFound(s"No task found with id $id")
             }
         }
 
-      case DELETE -> Root / "tasks" / id =>
+      case DELETE -> Root / "tasks" / IntVar(id) =>
         Logger[F].info(s"Received request to delete task with id $id") >>
           LiftIO[F].liftIO(taskRepo.deleteTask(id)).flatMap {
             case 1 => NoContent()

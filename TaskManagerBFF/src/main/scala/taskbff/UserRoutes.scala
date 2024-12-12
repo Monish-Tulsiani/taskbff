@@ -28,13 +28,13 @@ object UserRoutes {
 
       case req @ POST -> Root / "users" =>
         for {
-          userData <- req.as[UserData]
+          userData <- req.as[UserData] // Extract the user data from the request body
           _ <- Logger[F].info(s"Received request to create user: $userData")
-          val userWithIdAndRole = User(UUID.randomUUID().toString, userData.username, userData.password, "role2")
-          result <- LiftIO[F].liftIO(userRepo.createUser(userWithIdAndRole)).attempt
+          val userWithRole = User(0, userData.username, userData.password, 2) // Set user_id to 0 for auto-increment
+          result <- LiftIO[F].liftIO(userRepo.createUser(userWithRole)).attempt
           response <- result match {
-            case Right(_) => Created(userWithIdAndRole)
-            case Left(e) => InternalServerError(s"Failed to create user: ${e.getMessage}")
+            case Right(createdUser) => Created(createdUser) // Return the created user with ID
+            case Left(e) => InternalServerError(s"Failed to create user: ${e.getMessage}") // Handle errors
           }
         } yield response
 
@@ -49,14 +49,14 @@ object UserRoutes {
               InternalServerError("Something went wrong")
           }
 
-      case GET -> Root / "users" / id =>
+      case GET -> Root / "users" / IntVar(id) =>
         Logger[F].info(s"Received request to get user with id $id") >>
           LiftIO[F].liftIO(userRepo.getUserById(id)).flatMap {
             case Some(user) => Ok(user)
             case None => NotFound(s"No user found with id $id")
           }
 
-      case req @ PUT -> Root / "users" / id =>
+      case req @ PUT -> Root / "users" / IntVar(id) =>
         req.as[UserData].flatMap { userData =>
           Logger[F].info(s"Received request to update user with id $id with data: $userData") >>
             LiftIO[F].liftIO {
@@ -67,7 +67,7 @@ object UserRoutes {
             }
         }
 
-      case DELETE -> Root / "users" / id =>
+      case DELETE -> Root / "users" / IntVar(id) =>
         Logger[F].info(s"Received request to delete user with id $id") >>
           LiftIO[F].liftIO(userRepo.deleteUser(id)).flatMap {
             case 1 => NoContent()

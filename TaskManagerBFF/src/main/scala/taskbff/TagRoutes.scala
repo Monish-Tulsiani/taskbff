@@ -28,10 +28,11 @@ object TagRoutes {
         for {
           tagInput <- req.as[TagData]
           _ <- Logger[F].info(s"Received request to create tag: $tagInput")
-          tagWithId = Tag(UUID.randomUUID().toString, tagInput.name)
-          result <- LiftIO[F].liftIO(tagRepo.createTag(tagWithId)).attempt
+          result <- LiftIO[F].liftIO(tagRepo.createTag(Tag(0, tagInput.name))).attempt
           response <- result match {
-            case Right(_) => Created(tagWithId)
+            case Right(tagId) =>
+              val createdTag = Tag(tagId, tagInput.name)
+              Created(createdTag)
             case Left(e) => InternalServerError(s"Failed to create tag: ${e.getMessage}")
           }
         } yield response
@@ -47,14 +48,14 @@ object TagRoutes {
               InternalServerError("Something went wrong")
           }
 
-      case GET -> Root / "tags" / id =>
+      case GET -> Root / "tags" / IntVar(id) =>
         Logger[F].info(s"Received request to get task with id $id") >>
           LiftIO[F].liftIO(tagRepo.getTagById(id)).flatMap {
             case Some(tag) => Ok(tag)
             case None => NotFound(s"No task found with id $id")
           }
 
-      case req @ PUT -> Root / "tags" / id =>
+      case req @ PUT -> Root / "tags" / IntVar(id) =>
         req.as[TagData].flatMap { updatedTagInput =>
           Logger[F].info(s"Received request to update tag with id $id with data: $updatedTagInput") >>
             LiftIO[F].liftIO {
@@ -65,7 +66,7 @@ object TagRoutes {
             }
         }
 
-      case DELETE -> Root / "tags" / id =>
+      case DELETE -> Root / "tags" / IntVar(id) =>
         Logger[F].info(s"Received request to delete tag with id $id") >>
           LiftIO[F].liftIO(tagRepo.deleteTag(id)).flatMap {
             case 1 => NoContent()
